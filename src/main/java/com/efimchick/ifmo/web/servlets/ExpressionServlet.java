@@ -8,7 +8,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.io.IOException;
-import java.util.Stack;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,6 +30,7 @@ public class ExpressionServlet extends HttpServlet {
     public static final String EXPRESSION = "expression";
 
     private static final long serialVersionUID = 1;
+
 
     @Override
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) {
@@ -72,10 +74,9 @@ public class ExpressionServlet extends HttpServlet {
     private Integer calculate(String expression, HttpSession session) {
         Integer result = null;
         boolean emptyValue = false;
-        Stack<Character> operations = new Stack<>();
-        Stack<Integer> values = new Stack<>();
-        char[] variables = expression.toCharArray();
-        for (Character var : variables) {
+        Deque<Character> operations = new ArrayDeque<>();
+        Deque<Integer> values = new ArrayDeque<>();
+        for (Character var : expression.toCharArray()) {
             if (isNumber(var)) {
                 values.push(Integer.parseInt(var.toString()));
             } else if (isLetter(var)) {
@@ -84,24 +85,12 @@ public class ExpressionServlet extends HttpServlet {
                     emptyValue = true;
                     break;
                 }
-                char charValue = value.charAt(0);
-                while (isLetter(charValue)) {
-                    value = session.getAttribute(String.valueOf(charValue)).toString();
-                    charValue = value.charAt(0);
+                while (isLetter(value.charAt(0))) {
+                    value = session.getAttribute(String.valueOf(value.charAt(0))).toString();
                 }
                 values.push(Integer.valueOf(value));
-            } else if (var == OPEN_BRACKET) {
-                operations.push(var);
-            } else if (var == CLOSE_BRACKET) {
-                while (operations.peek() != OPEN_BRACKET) {
-                    values.push(calcSimpleOperation(operations.pop(), values.pop(), values.pop()));
-                }
-                operations.pop();
             } else {
-                while (!operations.isEmpty() && checkPriority(var, operations.peek())) {
-                    values.push(calcSimpleOperation(operations.pop(), values.pop(), values.pop()));
-                }
-                operations.push(var);
+                preCalculationResult(operations, values, var);
             }
         }
         if (!emptyValue) {
@@ -111,6 +100,22 @@ public class ExpressionServlet extends HttpServlet {
             result = values.pop();
         }
         return result;
+    }
+
+    private void preCalculationResult(Deque<Character> operations, Deque<Integer> values, Character var) {
+        if (var == OPEN_BRACKET) {
+            operations.push(var);
+        } else if (var == CLOSE_BRACKET) {
+            while (operations.peek() != OPEN_BRACKET) {
+                values.push(calcSimpleOperation(operations.pop(), values.pop(), values.pop()));
+            }
+            operations.pop();
+        } else {
+            while (!operations.isEmpty() && checkPriority(var, operations.peek())) {
+                values.push(calcSimpleOperation(operations.pop(), values.pop(), values.pop()));
+            }
+            operations.push(var);
+        }
     }
 
     private boolean isNumber(Character var) {

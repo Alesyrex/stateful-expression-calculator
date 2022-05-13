@@ -20,10 +20,11 @@ public class ExpressionFilter implements Filter {
     public static final Integer LEFT_RANGE = -10000;
     public static final Integer RIGHT_RANGE = 10000;
     public static final String EXPRESSION = "expression";
+    private FilterConfig filterConfig;
 
     @Override
     public void init(FilterConfig filterConfig) {
-
+        this.filterConfig = filterConfig;
     }
 
     @Override
@@ -81,7 +82,7 @@ public class ExpressionFilter implements Filter {
 
     @Override
     public void destroy() {
-
+        filterConfig = null;
     }
 }
 

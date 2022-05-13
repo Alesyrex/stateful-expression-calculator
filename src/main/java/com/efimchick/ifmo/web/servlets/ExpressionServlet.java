@@ -144,12 +144,11 @@ public class ExpressionServlet extends HttpServlet {
     }
 
     private boolean checkPriority(char currentOperation, char previousOperation) {
-        boolean priority;
-        if (previousOperation == OPEN_BRACKET || previousOperation == CLOSE_BRACKET) {
+        boolean priority = previousOperation != OPEN_BRACKET && previousOperation != CLOSE_BRACKET;
+
+        if ((currentOperation == MULTIPLE || currentOperation == DIVIDE)
+                && (previousOperation == PLUS || previousOperation == MINUS)) {
             priority = false;
-        } else {
-            priority = (currentOperation != MULTIPLE && currentOperation != DIVIDE) ||
-                    (previousOperation != PLUS && previousOperation != MINUS);
         }
         return priority;
     }

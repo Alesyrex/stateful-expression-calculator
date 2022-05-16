@@ -15,18 +15,8 @@ import java.util.regex.Pattern;
 
 @WebServlet("/calc/*")
 public class ExpressionServlet extends HttpServlet {
-    public static final char LETTER_A = 'a';
-    public static final char LETTER_Z = 'z';
-    public static final char NUMBER_0 = '0';
-    public static final char NUMBER_9 = '9';
     public static final String EMPTY = "";
     public static final Pattern REGEX = Pattern.compile("\\s+");
-    public static final char OPEN_BRACKET = '(';
-    public static final char CLOSE_BRACKET = ')';
-    public static final char PLUS = '+';
-    public static final char MINUS = '-';
-    public static final char MULTIPLE = '*';
-    public static final char DIVIDE = '/';
     public static final String EXPRESSION = "expression";
 
     private static final long serialVersionUID = 1;
@@ -80,13 +70,10 @@ public class ExpressionServlet extends HttpServlet {
             if (isNumber(var)) {
                 values.push(Integer.parseInt(var.toString()));
             } else if (isLetter(var)) {
-                String value = (String) session.getAttribute(String.valueOf(var));
+                String value = extractValueBeforeCalculation(session, var);
                 if (value == null) {
                     emptyValue = true;
                     break;
-                }
-                while (isLetter(value.charAt(0))) {
-                    value = session.getAttribute(String.valueOf(value.charAt(0))).toString();
                 }
                 values.push(Integer.valueOf(value));
             } else {
@@ -94,19 +81,35 @@ public class ExpressionServlet extends HttpServlet {
             }
         }
         if (!emptyValue) {
-            while (!operations.isEmpty()) {
-                values.push(calcSimpleOperation(operations.pop(), values.pop(), values.pop()));
-            }
-            result = values.pop();
+            result = resultCalculation(operations, values);
         }
         return result;
     }
 
+    private Integer resultCalculation(Deque<Character> operations, Deque<Integer> values) {
+        Integer result;
+        while (!operations.isEmpty()) {
+            values.push(calcSimpleOperation(operations.pop(), values.pop(), values.pop()));
+        }
+        result = values.pop();
+        return result;
+    }
+
+    private String extractValueBeforeCalculation(HttpSession session, char var) {
+        String value = (String) session.getAttribute(String.valueOf(var));
+        if (value != null) {
+            while (isLetter(value.charAt(0))) {
+                value = session.getAttribute(String.valueOf(value.charAt(0))).toString();
+            }
+        }
+        return value;
+    }
+
     private void preCalculationResult(Deque<Character> operations, Deque<Integer> values, Character var) {
-        if (var == OPEN_BRACKET) {
+        if (var == Symbol.OPEN_BRACKET.getSymbol()) {
             operations.push(var);
-        } else if (var == CLOSE_BRACKET) {
-            while (operations.peek() != OPEN_BRACKET) {
+        } else if (var == Symbol.CLOSE_BRACKET.getSymbol()) {
+            while (operations.peek() != Symbol.OPEN_BRACKET.getSymbol()) {
                 values.push(calcSimpleOperation(operations.pop(), values.pop(), values.pop()));
             }
             operations.pop();
@@ -119,40 +122,33 @@ public class ExpressionServlet extends HttpServlet {
     }
 
     private boolean isNumber(Character var) {
-        return var >= NUMBER_0 && var <= NUMBER_9;
+        return var >= Symbol.NUMBER_0.getSymbol() && var <= Symbol.NUMBER_9.getSymbol();
     }
 
     private boolean isLetter(Character var) {
-        return var >= LETTER_A && var <= LETTER_Z;
+        return var >= Symbol.LETTER_A.getSymbol() && var <= Symbol.LETTER_Z.getSymbol();
     }
 
     private Integer calcSimpleOperation(char operation, Integer secondValue, Integer firstValue) {
         int result;
-        switch (operation) {
-            case PLUS:
-                result = firstValue + secondValue;
-                break;
-            case MINUS:
-                result = firstValue - secondValue;
-                break;
-            case MULTIPLE:
-                result = firstValue * secondValue;
-                break;
-            case DIVIDE:
-                result = firstValue / secondValue;
-                break;
-            default:
-                result = 0;
-                break;
+        if (operation == Symbol.PLUS.getSymbol()) {
+            result = firstValue + secondValue;
+        } else if (operation == Symbol.MINUS.getSymbol()) {
+            result = firstValue - secondValue;
+        } else if (operation == Symbol.MULTIPLE.getSymbol()) {
+            result = firstValue * secondValue;
+        } else {
+            result = firstValue / secondValue;
         }
         return result;
     }
 
     private boolean checkPriority(char currentOperation, char previousOperation) {
-        boolean priority = previousOperation != OPEN_BRACKET && previousOperation != CLOSE_BRACKET;
+        boolean priority = previousOperation != Symbol.OPEN_BRACKET.getSymbol()
+                && previousOperation != Symbol.CLOSE_BRACKET.getSymbol();
 
-        if ((currentOperation == MULTIPLE || currentOperation == DIVIDE)
-                && (previousOperation == PLUS || previousOperation == MINUS)) {
+        if ((currentOperation == Symbol.MULTIPLE.getSymbol() || currentOperation == Symbol.DIVIDE.getSymbol())
+                && (previousOperation == Symbol.PLUS.getSymbol() || previousOperation == Symbol.MINUS.getSymbol())) {
             priority = false;
         }
         return priority;
